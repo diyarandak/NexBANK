@@ -1,0 +1,30 @@
+# .NET Core
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Node.js (Frontend)
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Database (SQLite)
+*.db
+*.db-shm
+*.db-wal
+
+# IDE - Visual Studio & VS Code
+.vs/
+.vscode/
+.DS_Store
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs
+*.log

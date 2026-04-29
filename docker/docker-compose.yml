@@ -1,0 +1,33 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: nexbank_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: nexbank_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: nexbank_api
+    depends_on:
+      - db
+    ports:
+      - "5000:8080"
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    container_name: nexbank_ui
+    ports:
+      - "3000:80"
+
+volumes:
+  db_data:
