@@ -16,17 +16,20 @@ public class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly NexBank.Application.Patterns.Factory.IAccountFactory _accountFactory;
     private readonly IAccountRepository _accountRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public AuthService(
         IUserRepository userRepository, 
         IConfiguration configuration,
         NexBank.Application.Patterns.Factory.IAccountFactory accountFactory,
-        IAccountRepository accountRepository)
+        IAccountRepository accountRepository,
+        IUnitOfWork unitOfWork)
     {
         _userRepository = userRepository;
         _configuration = configuration;
         _accountFactory = accountFactory;
         _accountRepository = accountRepository;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>
@@ -93,34 +96,44 @@ public class AuthService : IAuthService
             throw new ArgumentException("Bu e-posta adresi sistemde zaten kayıtlı.");
         }
 
-        // 5. Kullanıcıyı Kaydet
-        // Şube ismini standardize et (Yalova, Yalova Merkez vb. -> Yalova Şubesi)
-        var userBranch = (request.Branch != null && request.Branch.Contains("Yalova")) ? "Yalova Şubesi" : (request.Branch ?? "Genel");
-
-        var user = new Core.Entities.User
+        // 5. Transaction Başlat
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            FullName = request.FullName,
-            Email = request.Email,
-            TcKimlikNo = request.TcKimlikNo,
-            PasswordHash = HashPassword(request.Password),
-            Role = Core.Entities.UserRole.Customer,
-            Branch = userBranch,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+            // 6. Kullanıcıyı Kaydet
+            var userBranch = (request.Branch != null && request.Branch.Contains("Yalova")) ? "Yalova Şubesi" : (request.Branch ?? "Genel");
 
-        var savedUser = await _userRepository.AddAsync(user);
-        
-        if (savedUser == null || savedUser.Id == 0)
-        {
-            throw new Exception("Kullanıcı kaydı yapılamadı, lütfen tekrar deneyin.");
+            var user = new Core.Entities.User
+            {
+                FullName = request.FullName,
+                Email = request.Email,
+                TcKimlikNo = request.TcKimlikNo,
+                PasswordHash = HashPassword(request.Password),
+                Role = Core.Entities.UserRole.Customer,
+                Branch = userBranch,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            var savedUser = await _userRepository.AddAsync(user);
+            
+            if (savedUser == null || savedUser.Id == 0)
+            {
+                throw new Exception("Kullanıcı kaydı yapılamadı.");
+            }
+
+            // 7. Varsayılan bir hesap aç (Factory Pattern)
+            var defaultAccount = _accountFactory.CreateAccount(Core.Entities.AccountType.Individual, savedUser.Id, "TRY");
+            await _accountRepository.AddAsync(defaultAccount);
+
+            await _unitOfWork.CommitTransactionAsync();
+            return MapToDto(savedUser);
         }
-
-        // 6. Varsayılan bir hesap aç (Factory Pattern)
-        var defaultAccount = _accountFactory.CreateAccount(Core.Entities.AccountType.Individual, savedUser.Id, "TRY");
-        await _accountRepository.AddAsync(defaultAccount);
-
-        return MapToDto(savedUser);
+        catch (Exception)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
     }
 
     /// <summary>

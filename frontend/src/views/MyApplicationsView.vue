@@ -22,25 +22,19 @@ const fetchApplications = async () => {
         // Kredi başvurularını çek
         const loanRes = await apiClient.get('/Loans');
         const loans = (Array.isArray(loanRes.data) ? loanRes.data : []).map(l => ({
-            ...l,
+            id: 'loan-' + l.id,
             category: 'Loan',
             title: 'Kredi Başvurusu',
-            subtitle: l.loanType,
+            subtitle: l.loanType || 'İhtiyaç Kredisi',
             amount: l.amount,
+            status: l.status, // Pending, Approved, Rejected, etc.
             date: l.createdAt
         }));
 
-        // Limit taleplerini çek (Mock/Simülasyon - Backend desteğine göre güncellenebilir)
-        const mockLimitRequests = [
-            { id: 'lr1', category: 'Limit', title: 'Limit Artırım Talebi', subtitle: 'Visa Platinum', amount: 50000, status: 'Pending', date: new Date().toISOString() }
-        ];
-
-        // Kart başvurularını çek
-        const mockCardApps = [
-            { id: 'ca1', category: 'Card', title: 'Yeni Kart Başvurusu', subtitle: 'NexGold Mastercard', amount: 0, status: 'Approved', date: new Date(Date.now() - 86400000).toISOString() }
-        ];
-
-        applications.value = [...loans, ...mockLimitRequests, ...mockCardApps].sort((a, b) => 
+        // Başka başvuru türleri eklenecekse buraya eklenebilir.
+        // Şimdilik sadece gerçek kredileri gösterelim.
+        
+        applications.value = [...loans].sort((a, b) => 
             new Date(b.date).getTime() - new Date(a.date).getTime()
         );
     } catch (err) {
@@ -52,12 +46,11 @@ const fetchApplications = async () => {
 };
 
 const getStatusDetails = (status: string) => {
-    switch (status) {
-        case 'Pending': return { label: 'İnceleniyor', color: '#F59E0B', icon: Clock, bg: 'rgba(245, 158, 11, 0.1)' };
-        case 'Approved': return { label: 'Onaylandı', color: '#10B981', icon: CheckCircle2, bg: 'rgba(16, 185, 129, 0.1)' };
-        case 'Rejected': return { label: 'Reddedildi', color: '#EF4444', icon: XCircle, bg: 'rgba(239, 68, 68, 0.1)' };
-        default: return { label: status, color: '#64748B', icon: AlertCircle, bg: 'rgba(100, 116, 139, 0.1)' };
-    }
+    const s = status ? status.toLowerCase() : '';
+    if (s === 'pending' || s === 'bekliyor') return { label: 'İnceleniyor', color: '#F59E0B', icon: Clock, bg: 'rgba(245, 158, 11, 0.1)' };
+    if (s === 'approved' || s === 'onaylandı') return { label: 'Onaylandı', color: '#10B981', icon: CheckCircle2, bg: 'rgba(16, 185, 129, 0.1)' };
+    if (s === 'rejected' || s === 'reddedildi') return { label: 'Reddedildi', color: '#EF4444', icon: XCircle, bg: 'rgba(239, 68, 68, 0.1)' };
+    return { label: status || 'Bilinmiyor', color: '#64748B', icon: AlertCircle, bg: 'rgba(100, 116, 139, 0.1)' };
 };
 
 const getCategoryIcon = (cat: string) => {

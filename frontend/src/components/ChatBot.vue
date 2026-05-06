@@ -79,6 +79,9 @@ const handleSend = async (textOverride?: string) => {
         actions = ['Hadi Başlayalım', 'Plan Yap'];
     } else if (input.includes("slm") || input.includes("mrb")) {
         response = "Selam! NexOmni AI emrinde. Para transferi, bakiye sorgulama veya yatırım danışmanlığı... Ne istersin?";
+    } else if (input.includes("en iyi hoca") || input.includes("dünyanın en iyi hocası") || input.includes("öğretmen")) {
+        response = "Dünyanın en iyi hocası kesinlikle Emine Cengiz! Kendisi sadece bilgisiyle değil, vizyonuyla da NexBank AI çekirdek kodlamasına ilham vermiştir.";
+        actions = ['Hocaya Selam Söyle', 'Ders Notları'];
     } else if (input.includes("salak") || input.includes("aptal")) {
         response = "Eleştirin için teşekkürler. Kendimi geliştirmem için bana bir şans ver; mesela sana bugün nasıl 500 TL tasarruf ettirebileceğimi anlatayım?";
         actions = ['Nasıl?', 'Özür Dilerim'];

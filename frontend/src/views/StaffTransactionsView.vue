@@ -79,7 +79,7 @@ onMounted(fetchTransactions);
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="t in filteredTransactions" :key="t.id">
+                <tr v-for="t in filteredTransactions" :key="t.id" :class="{ 'suspicious-row': t.description?.includes('ŞÜPHELİ') }">
                     <td><span class="id-tag">#{{ t.id }}</span></td>
                     <td>
                         <div class="t-type-cell">
@@ -88,7 +88,7 @@ onMounted(fetchTransactions);
                             </span>
                             <div class="t-desc">
                                 <strong>{{ t.type === 'Withdrawal' ? 'Para Çekme' : (t.type === 'Deposit' ? 'Para Yatırma' : 'Transfer') }}</strong>
-                                <small>{{ t.description }}</small>
+                                <small :class="{ 'fraud-desc': t.description?.includes('ŞÜPHELİ') }">{{ t.description }}</small>
                             </div>
                         </div>
                     </td>
@@ -96,7 +96,11 @@ onMounted(fetchTransactions);
                     <td><code>{{ t.fromAccountId || '---' }}</code></td>
                     <td><code>{{ t.toAccountId || '---' }}</code></td>
                     <td><strong :class="t.type === 'Withdrawal' ? 'text-danger' : 'text-success'">{{ formatCurrency(t.amount) }}</strong></td>
-                    <td><span class="t-status-pill">Başarılı</span></td>
+                    <td>
+                        <span class="t-status-pill" :class="t.status.toLowerCase()">
+                            {{ t.status === 'Pending' ? 'İncelemede' : (t.status === 'Approved' ? 'Başarılı' : (t.status === 'Rejected' ? 'Reddedildi' : t.status)) }}
+                        </span>
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -121,7 +125,13 @@ onMounted(fetchTransactions);
 .t-desc strong { font-size: 0.9rem; color: #0F172A; }
 .t-desc small { font-size: 0.75rem; color: #64748B; }
 
-.t-status-pill { background: #E0F2FE; color: #0369A1; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
+.t-status-pill { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
+.t-status-pill.approved { background: #DCFCE7; color: #16A34A; }
+.t-status-pill.pending { background: #FEF3C7; color: #D97706; }
+.t-status-pill.rejected { background: #FEE2E2; color: #DC2626; }
+
+.suspicious-row { background: rgba(239, 68, 68, 0.05); }
+.fraud-desc { color: #DC2626 !important; font-weight: 800; }
 
 .modern-search { background: white; border: 1px solid var(--border); border-radius: 100px; padding: 0 15px; display: flex; align-items: center; }
 .modern-search input { border: none; outline: none; flex: 1; padding: 10px; font-weight: 600; font-size: 0.9rem; }

@@ -16,7 +16,7 @@ const router = createRouter({
     { path: '/accounts', name: 'accounts', component: AccountsView, meta: { requiresAuth: true } },
     { path: '/cards', name: 'cards', component: () => import('../views/CardsView.vue'), meta: { requiresAuth: true } },
     { path: '/cash-advance', name: 'cash-advance', component: () => import('../views/CashAdvanceView.vue'), meta: { requiresAuth: true } },
-    { path: '/receipt-scanner', name: 'receipt-scanner', component: () => import('../views/ReceiptScannerView.vue'), meta: { requiresAuth: true } },
+    { path: '/credit-card-payment', name: 'credit-card-payment', component: () => import('../views/CreditCardPaymentView.vue'), meta: { requiresAuth: true } },
     { path: '/wallet', name: 'wallet', component: () => import('../views/WalletView.vue'), meta: { requiresAuth: true } },
     
     { path: '/transfer', name: 'transfer', component: () => import('../views/TransferView.vue'), meta: { requiresAuth: true } },

@@ -31,10 +31,11 @@ const showAnalysisMenu = ref(false);
 
 const combinedTransactions = computed(() => {
     let real = summary.value?.recentTransactions || [];
+    const userId = authStore.user?.id;
     
-    // Taranan fişleri ve Manuel işlemleri ekle (Entegrasyon)
-    const scannedExpenses = JSON.parse(localStorage.getItem('scanned_expenses') || '[]');
-    const manualTx = JSON.parse(localStorage.getItem('manual_transactions') || '[]');
+    // Taranan fişleri ve Manuel işlemleri ekle (Kullanıcıya özel)
+    const scannedExpenses = userId ? JSON.parse(localStorage.getItem(`scanned_expenses_${userId}`) || '[]') : [];
+    const manualTx = userId ? JSON.parse(localStorage.getItem(`manual_transactions_${userId}`) || '[]') : [];
     let combined = [...scannedExpenses, ...manualTx, ...real];
     
     // Yalnızca demo hesabı ise fake verileri göster

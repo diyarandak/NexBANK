@@ -2,7 +2,6 @@ using NexBank.Application.DTOs;
 using NexBank.Application.Interfaces;
 using NexBank.Core.Entities;
 using NexBank.Core.Interfaces;
-using NexBank.Application.Patterns.State;
 
 namespace NexBank.Application.Services;
 
@@ -11,21 +10,19 @@ public class LoanService : ILoanService
     private readonly ILoanRepository _loanRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionService _transactionService;
+    private readonly INotificationRepository _notificationRepository;
 
-    public LoanService(ILoanRepository loanRepository, IAccountRepository accountRepository, ITransactionService transactionService)
+    public LoanService(
+        ILoanRepository loanRepository, 
+        IAccountRepository accountRepository, 
+        ITransactionService transactionService,
+        INotificationRepository notificationRepository)
     {
         _loanRepository = loanRepository;
         _accountRepository = accountRepository;
         _transactionService = transactionService;
+        _notificationRepository = notificationRepository;
     }
-
-    private ILoanState GetState(string status) => status switch
-    {
-        "Pending" => new PendingState(),
-        "Approved" => new ApprovedState(),
-        "Completed" => new CompletedState(),
-        _ => new PendingState() // Default
-    };
 
     public async Task<List<LoanDto>> GetUserLoansAsync(int userId)
     {
@@ -41,8 +38,14 @@ public class LoanService : ILoanService
 
     public async Task<LoanDto> ApplyForLoanAsync(int userId, LoanApplicationDto dto)
     {
-        if (!Enum.TryParse<LoanType>(dto.LoanType, true, out var loanType))
-            throw new ArgumentException("Geçersiz kredi türü.");
+        // Frontend'den gelen değerleri enum ile eşleştir (Alias desteği ekle)
+        string typeStr = dto.LoanType;
+        if (typeStr == "Personal") typeStr = "Ihtiyac";
+        else if (typeStr == "Home") typeStr = "Konut";
+        else if (typeStr == "Car") typeStr = "Tasit";
+
+        if (!Enum.TryParse<LoanType>(typeStr, true, out var loanType))
+            throw new ArgumentException("Geçersiz kredi türü. Lütfen İhtiyaç, Konut veya Taşıt kredisi seçin.");
 
         decimal interestRate = loanType switch
         {
@@ -84,14 +87,9 @@ public class LoanService : ILoanService
     public async Task<bool> ApproveLoanAsync(int loanId, int staffId)
     {
         var loan = await _loanRepository.GetByIdAsync(loanId);
-        if (loan == null) return false;
+        if (loan == null || loan.Status != LoanStatus.Pending) return false;
 
-        // STATE PATTERN: Durum objesini al ve Onayla
-        try {
-            var state = GetState(loan.Status.ToString());
-            state.Approve(loan);
-        } catch { return false; }
-
+        loan.Status = LoanStatus.Approved;
         loan.ApprovedAt = DateTime.UtcNow;
         loan.ApprovedByStaffId = staffId;
 
@@ -114,6 +112,16 @@ public class LoanService : ILoanService
         // Kredi tutarını hesaba yatır
         await _transactionService.MakeDepositAsync(loan.AccountId, loan.Amount);
 
+        // Müşteriye bildirim gönder
+        await _notificationRepository.AddAsync(new Notification
+        {
+            UserId = loan.UserId,
+            Title = "Kredi Başvurunuz Onaylandı! 🎉",
+            Message = $"{loan.Amount:N2} TL tutarındaki {loan.LoanType} krediniz onaylanmış ve hesabınıza yatırılmıştır.",
+            Type = "Success",
+            CreatedAt = DateTime.UtcNow
+        });
+
         return true;
     }
 
@@ -125,6 +133,16 @@ public class LoanService : ILoanService
         loan.Status = LoanStatus.Rejected;
         loan.ApprovedByStaffId = staffId;
         await _loanRepository.UpdateAsync(loan);
+
+        // Müşteriye bildirim gönder
+        await _notificationRepository.AddAsync(new Notification
+        {
+            UserId = loan.UserId,
+            Title = "Kredi Başvurusu Hakkında Bilgilendirme",
+            Message = $"{loan.Amount:N2} TL tutarındaki kredi başvurunuz maalesef onaylanmamıştır.",
+            Type = "Danger",
+            CreatedAt = DateTime.UtcNow
+        });
 
         return true;
     }

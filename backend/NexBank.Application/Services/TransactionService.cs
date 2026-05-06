@@ -3,7 +3,6 @@ using NexBank.Application.Patterns.Command;
 using NexBank.Application.Patterns.Strategy;
 using NexBank.Core.Entities;
 using NexBank.Core.Interfaces;
-using NexBank.Application.Patterns.ChainOfResponsibility;
 
 namespace NexBank.Application.Services;
 
@@ -29,16 +28,16 @@ public class TransactionService : ITransactionService
         _unitOfWork = unitOfWork;
     }
 
-    private TransactionHandler GetValidationChain()
+    private void ValidateTransaction(Account account, decimal amount)
     {
-        var status = new AccountStatusHandler();
-        var limit = new DailyLimitHandler();
-        var balance = new BalanceCheckHandler();
+        if (!account.IsActive)
+            throw new Exception("Hesap pasif durumda. İşlem yapılamaz.");
 
-        status.SetNext(limit);
-        limit.SetNext(balance);
+        if (amount > account.DailyLimit)
+            throw new Exception($"Günlük işlem limitini ({account.DailyLimit}₺) aştınız.");
 
-        return status;
+        if (account.Balance < amount)
+            throw new Exception("Yetersiz bakiye. İşlem reddedildi.");
     }
 
     public async Task<bool> MakeTransferAsync(int fromAccountId, string toIban, decimal amount, string paymentMethodStr)
@@ -55,12 +54,11 @@ public class TransactionService : ITransactionService
 
             decimal fee = _strategyContext.CalculateFee(method, amount);
 
-            // 0. CHAIN OF RESPONSIBILITY: Validasyon Zincirini Çalıştır
+            // Validasyon Kontrolleri
             var fromAccount = await _accountRepository.GetByIdAsync(fromAccountId);
             if (fromAccount == null) throw new Exception("Gönderen hesap bulunamadı.");
             
-            var chain = GetValidationChain();
-            await chain.HandleAsync(fromAccount, amount + fee);
+            ValidateTransaction(fromAccount, amount + fee);
 
             // İşlem kaydını oluştur
             var transaction = new Transaction
@@ -125,9 +123,8 @@ public class TransactionService : ITransactionService
         var account = await _accountRepository.GetByIdAsync(accountId);
         if (account == null) throw new ArgumentException("Hesap bulunamadı.");
         
-        // CHAIN OF RESPONSIBILITY
-        var chain = GetValidationChain();
-        await chain.HandleAsync(account, amount);
+        // Validasyon Kontrolleri
+        ValidateTransaction(account, amount);
 
         var transaction = new Transaction
         {

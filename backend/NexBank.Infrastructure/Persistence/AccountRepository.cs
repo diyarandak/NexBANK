@@ -29,6 +29,7 @@ public class AccountRepository : IAccountRepository
     {
         _context.Accounts.Add(account);
         await _context.SaveChangesAsync();
+        NexBank.Application.Patterns.Singleton.DatabaseManager.Instance.IncrementSaveCount();
         return account;
     }
 
@@ -36,6 +37,7 @@ public class AccountRepository : IAccountRepository
     {
         _context.Accounts.Update(account);
         await _context.SaveChangesAsync();
+        NexBank.Application.Patterns.Singleton.DatabaseManager.Instance.IncrementSaveCount();
     }
 
     public async Task<int> GetCountAsync() =>

@@ -120,10 +120,10 @@ const totalPendingVolume = computed(() => {
                 <div v-for="l in loans" :key="l.id" class="glass-card-elite loan-ticket-card scale-up">
                     <div class="ltc-header">
                         <div class="ltc-user">
-                            <div class="ltc-avatar">{{ l.user?.fullName.charAt(0) }}</div>
+                            <div class="ltc-avatar">{{ l.userFullName.charAt(0) }}</div>
                             <div class="ltc-user-info">
-                                <strong>{{ l.user?.fullName }}</strong>
-                                <span>IBAN: {{ l.account?.iban }}</span>
+                                <strong>{{ l.userFullName }}</strong>
+                                <span>IBAN: {{ l.accountIban }}</span>
                             </div>
                         </div>
                         <div class="ltc-type-badge">{{ l.loanType }}</div>

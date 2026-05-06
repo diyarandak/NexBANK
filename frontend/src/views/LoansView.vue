@@ -25,9 +25,9 @@ const form = ref({
 const loanTypeDisplay = ref('İhtiyaç Kredisi');
 
 const loanTypeMap: Record<string, string> = {
-    'İhtiyaç Kredisi': 'Personal',
-    'Konut Kredisi': 'Home',
-    'Taşıt Kredisi': 'Car'
+    'İhtiyaç Kredisi': 'Ihtiyac',
+    'Konut Kredisi': 'Konut',
+    'Taşıt Kredisi': 'Tasit'
 };
 
 const liveRate = ref(0.035);
@@ -71,6 +71,10 @@ const monthlyInstallment = computed(() => {
 const totalPayback = computed(() => monthlyInstallment.value * form.value.term);
 
 const handleApply = async () => {
+  if (!form.value.accountId) {
+      toast.error('Lütfen kredinin yatırılacağı bir hesap seçin.');
+      return;
+  }
   if (loans.value.some(l => l.status === 'Pending')) {
       toast.error('Halihazırda bekleyen bir kredi başvurunuz bulunmaktadır.');
       return;
@@ -85,8 +89,8 @@ const handleApply = async () => {
     await apiClient.post('/Loans/apply', {
       AccountId: parseInt(form.value.accountId),
       Amount: form.value.amount,
-      Term: form.value.term,
-      LoanType: loanTypeMap[loanTypeDisplay.value] || 'Personal'
+      TermMonths: form.value.term,
+      LoanType: loanTypeMap[loanTypeDisplay.value] || 'Ihtiyac'
     });
     toast.success('Kredi başvurunuz başarıyla alındı.');
     await fetchLoansData();

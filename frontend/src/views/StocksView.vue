@@ -39,30 +39,49 @@ const filteredStocks = computed(() => {
 });
 
 const fetchData = async () => {
+    loading.value = true;
     try {
-        const res = await apiClient.get('/Accounts');
-        userAccounts.value = res.data;
+        const [accRes, stockRes, portfolioRes] = await Promise.all([
+            apiClient.get('/Accounts'),
+            apiClient.get('/Stocks'),
+            apiClient.get('/Stocks/portfolio')
+        ]);
+        
+        userAccounts.value = accRes.data;
         if (userAccounts.value.length > 0) selectedAccountId.value = userAccounts.value[0].id.toString();
-        // Portföy simülasyonu
-        portfolio.value = [
-            { symbol: 'THYAO', amount: 10, buyPrice: 275.40 },
-            { symbol: 'ASELS', amount: 50, buyPrice: 52.10 }
-        ];
-    } catch (err) { console.error(err); }
+        
+        // Backend'den gelen gerçek hisse verilerini eşleştir
+        stocks.value = stockRes.data.map((s: any) => ({
+            symbol: s.symbol,
+            name: s.name,
+            price: s.currentPrice,
+            change: ((s.currentPrice - s.openingPrice) / s.openingPrice) * 100,
+            volume: '---', // Backend'de hacim yoksa placeholder
+            history: [s.openingPrice, s.currentPrice] // Basit geçmiş
+        }));
+
+        // Backend'den gelen gerçek portföy verileri
+        portfolio.value = portfolioRes.data.map((p: any) => ({
+            symbol: p.stockSymbol,
+            amount: p.quantity,
+            buyPrice: p.averageCost
+        }));
+    } catch (err) { 
+        console.error(err); 
+        toast.error("Borsa verileri yüklenemedi.");
+    }
     finally { loading.value = false; }
 };
 
 const simulatePrices = () => {
+    // Fiyat simülasyonu artık backend'deki SimulateMarketAsync ile yapıldığı için 
+    // sadece frontend'de görsel dalgalanma yapılabilir veya periyodik fetch edilebilir.
     stocks.value = stocks.value.map(s => {
-        const drift = (Math.random() - 0.48) * 1.2; // Hafif yukarı eğilim
+        const drift = (Math.random() - 0.5) * 0.2; 
         const newPrice = Math.max(1, s.price + drift);
-        const newHistory = [...s.history.slice(1), newPrice];
         return { 
             ...s, 
-            price: newPrice, 
-            change: ((newPrice - s.history[0]) / s.history[0] * 100),
-            history: newHistory,
-            trend: drift > 0 ? 'up' : 'down' 
+            price: newPrice
         };
     });
 };
@@ -70,6 +89,7 @@ const simulatePrices = () => {
 const handleTrade = async () => {
     if (!selectedStock.value || !selectedAccountId.value) return;
     
+    const endpoint = tradeMode.value === 'buy' ? '/Stocks/buy' : '/Stocks/sell';
     const totalCost = selectedStock.value.price * tradeAmount.value;
     const account = userAccounts.value.find(a => a.id.toString() === selectedAccountId.value);
 
@@ -79,46 +99,21 @@ const handleTrade = async () => {
     }
 
     try {
-        if (tradeMode.value === 'buy') {
-            // Gerçek hesap bakiyesini kontrol et
-            if (account && account.balance < totalCost) {
-                toast.error("Bakiyeniz yetersiz.");
-                return;
-            }
-            
-            // Portföye ekle
-            const existing = portfolio.value.find(p => p.symbol === selectedStock.value.symbol);
-            if (existing) {
-                existing.amount += tradeAmount.value;
-                existing.buyPrice = (existing.buyPrice + selectedStock.value.price) / 2; // Ortalama maliyet
-            } else {
-                portfolio.value.push({
-                    symbol: selectedStock.value.symbol,
-                    amount: tradeAmount.value,
-                    buyPrice: selectedStock.value.price
-                });
-            }
-            if (account) account.balance -= totalCost;
-            toast.success(`${tradeAmount.value} adet ${selectedStock.value.symbol} portföyünüze eklendi.`);
-        } else {
-            const existing = portfolio.value.find(p => p.symbol === selectedStock.value.symbol);
-            if (!existing || existing.amount < tradeAmount.value) {
-                toast.error("Elinizde yeterli hisse bulunmuyor.");
-                return;
-            }
-            
-            existing.amount -= tradeAmount.value;
-            if (existing.amount === 0) {
-                portfolio.value = portfolio.value.filter(p => p.symbol !== selectedStock.value.symbol);
-            }
-            if (account) account.balance += totalCost;
-            toast.success(`${tradeAmount.value} adet ${selectedStock.value.symbol} satıldı, kazanç hesabınıza aktarıldı.`);
-        }
+        loading.value = true;
+        await apiClient.post(endpoint, {
+            accountId: parseInt(selectedAccountId.value),
+            symbol: selectedStock.value.symbol,
+            quantity: tradeAmount.value
+        });
         
+        toast.success(`İşlem başarıyla gerçekleşti: ${tradeAmount.value} adet ${selectedStock.value.symbol}`);
         tradeMode.value = null;
         tradeAmount.value = 1;
-    } catch (err) {
-        toast.error("İşlem gerçekleştirilemedi.");
+        await fetchData(); // Verileri yenile
+    } catch (err: any) {
+        toast.error(err.response?.data?.message || "İşlem gerçekleştirilemedi.");
+    } finally {
+        loading.value = false;
     }
 };
 

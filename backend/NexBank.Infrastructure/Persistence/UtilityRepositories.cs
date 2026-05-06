@@ -52,6 +52,7 @@ public class FavoriteRecipientRepository : IFavoriteRecipientRepository
         {
             _context.FavoriteRecipients.Remove(item);
             await _context.SaveChangesAsync();
+            NexBank.Application.Patterns.Singleton.DatabaseManager.Instance.IncrementSaveCount();
         }
     }
 }
@@ -91,6 +92,7 @@ public class StandingOrderRepository : IStandingOrderRepository
         {
             _context.StandingOrders.Remove(item);
             await _context.SaveChangesAsync();
+            NexBank.Application.Patterns.Singleton.DatabaseManager.Instance.IncrementSaveCount();
         }
     }
 }
@@ -120,6 +122,7 @@ public class NotificationRepository : INotificationRepository
         {
             notification.IsRead = true;
             await _context.SaveChangesAsync();
+            NexBank.Application.Patterns.Singleton.DatabaseManager.Instance.IncrementSaveCount();
         }
     }
 }

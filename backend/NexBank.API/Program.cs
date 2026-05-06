@@ -11,7 +11,6 @@ using NexBank.Application.Services;
 using NexBank.Core.Interfaces;
 using NexBank.Infrastructure.Persistence;
 using NexBank.API.Hubs;
-using MediatR;
 using Microsoft.Extensions.Caching.Memory;
 using NexBank.API.Services;
 
@@ -97,7 +96,6 @@ builder.Services.AddScoped<IStockRepository>(provider =>
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSignalR();
-builder.Services.AddMediatR(typeof(AccountService).Assembly);
 
 // Factory Pattern
 builder.Services.AddSingleton<IAccountFactory, AccountFactory>();
@@ -153,7 +151,21 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<NexBankDbContext>();
-    context.Database.EnsureCreated(); // SQLite tabloları yoksa oluştur
+    
+    // Geliştirme aşamasında şema değişikliklerini yansıtmak için (Opsiyonel: context.Database.EnsureDeleted())
+    // Eğer 'başvuru hatası' alıyorsanız veritabanı şeması eski kalmış olabilir.
+    // context.Database.EnsureDeleted(); 
+    
+    context.Database.EnsureCreated(); 
+    
+    // ZORUNLU LİMİT GÜNCELLEME (Kullanıcının veritabanını silmesine gerek kalmaması için)
+    var demoAcc = await context.Accounts.FirstOrDefaultAsync(a => a.Iban == "TR92 0006 1000 1234 5678 9012 34");
+    if (demoAcc != null && demoAcc.DailyLimit == 0)
+    {
+        demoAcc.DailyLimit = 100000m;
+        await context.SaveChangesAsync();
+    }
+
     await DbSeeder.SeedAsync(context);
 }
 

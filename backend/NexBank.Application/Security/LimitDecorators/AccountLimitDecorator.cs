@@ -1,4 +1,4 @@
-namespace NexBank.Application.Patterns.Decorator;
+namespace NexBank.Application.Security.LimitDecorators;
 
 /// <summary>
 /// DECORATOR PATTERN - Base Decorator

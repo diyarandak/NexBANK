@@ -28,6 +28,9 @@ public class UnitOfWork : IUnitOfWork
         try
         {
             await _context.SaveChangesAsync();
+            
+            // SINGLETON PATTERN: Kayıt istatistiğini güncelle
+            NexBank.Application.Patterns.Singleton.DatabaseManager.Instance.IncrementSaveCount();
             if (_currentTransaction != null)
             {
                 await _currentTransaction.CommitAsync();
@@ -69,7 +72,12 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task<int> SaveChangesAsync()
     {
-        return await _context.SaveChangesAsync();
+        var result = await _context.SaveChangesAsync();
+        
+        // SINGLETON PATTERN: Kayıt istatistiğini güncelle
+        NexBank.Application.Patterns.Singleton.DatabaseManager.Instance.IncrementSaveCount();
+        
+        return result;
     }
 
     public void Dispose()

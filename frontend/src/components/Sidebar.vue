@@ -74,8 +74,8 @@ const toggle = (cat: string) => {
                     <router-link to="/cash-advance" class="nav-item">
                         <Coins :size="18" /> <span>Nakit Avans</span>
                     </router-link>
-                    <router-link to="/receipt-scanner" class="nav-item">
-                        <Camera :size="18" /> <span>NexVision AI</span>
+                    <router-link to="/credit-card-payment" class="nav-item">
+                        <CreditCard :size="18" /> <span>Kart Borcu Öde</span>
                     </router-link>
                     <router-link to="/wallet" class="nav-item">
                         <Wallet :size="18" /> <span>Dijital Cüzdan</span>

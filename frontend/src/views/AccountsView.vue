@@ -74,8 +74,33 @@ const createAccount = async () => {
 
 const copyIban = (iban: string) => {
   if (!iban) return;
-  navigator.clipboard.writeText(iban);
-  toastStore.success('IBAN kopyalandı.');
+  
+  // Modern API
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(iban).then(() => {
+        toastStore.success('IBAN panoya kopyalandı.');
+    }).catch(() => {
+        fallbackCopyTextToClipboard(iban);
+    });
+  } else {
+    fallbackCopyTextToClipboard(iban);
+  }
+};
+
+const fallbackCopyTextToClipboard = (text: string) => {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";  // avoid scrolling to bottom
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    document.execCommand('copy');
+    toastStore.success('IBAN kopyalandı.');
+  } catch (err) {
+    toastStore.error('Kopyalama başarısız oldu.');
+  }
+  document.body.removeChild(textArea);
 };
 
 const formatCurrency = (val: number, currency: string = 'TRY') => {

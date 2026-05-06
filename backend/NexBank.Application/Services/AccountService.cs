@@ -74,6 +74,7 @@ public class AccountService : IAccountService
     {
         Id = account.Id,
         AccountNumber = account.AccountNumber,
+        Iban = account.Iban,
         AccountType = account.AccountType.ToString(),
         Balance = account.Balance,
         Currency = account.Currency,

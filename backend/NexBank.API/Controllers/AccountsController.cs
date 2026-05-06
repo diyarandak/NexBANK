@@ -2,9 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexBank.Application.DTOs;
 using NexBank.Application.Interfaces;
-using MediatR;
-using NexBank.Application.Patterns.Mediator;
-
 namespace NexBank.API.Controllers;
 
 [ApiController]
@@ -13,12 +10,10 @@ namespace NexBank.API.Controllers;
 public class AccountsController : ControllerBase
 {
     private readonly IAccountService _accountService;
-    private readonly IMediator _mediator;
 
-    public AccountsController(IAccountService accountService, IMediator mediator)
+    public AccountsController(IAccountService accountService)
     {
         _accountService = accountService;
-        _mediator = mediator;
     }
 
     /// <summary>
@@ -41,8 +36,7 @@ public class AccountsController : ControllerBase
             if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
                 return Unauthorized();
                 
-            // MEDIATOR PATTERN: Direkt servis çağırmak yerine Query fırlatıyoruz
-            var accounts = await _mediator.Send(new GetUserAccountsQuery(userId));
+            var accounts = await _accountService.GetAccountsByUserIdAsync(userId);
             return Ok(accounts);
         }
     }
