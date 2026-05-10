@@ -16,15 +16,15 @@ const loading = ref(true);
 let refreshInterval: any = null;
 
 const fakeTransactions = [
-  { id: 'f1', type: 'Withdrawal', description: 'Netflix Aboneliği', amount: 149.99, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
-  { id: 'f2', type: 'Deposit', description: 'Maaş Ödemesi', amount: 45000.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString() },
-  { id: 'f3', type: 'Withdrawal', description: 'Market Alışverişi', amount: 845.50, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString() },
-  { id: 'f4', type: 'Withdrawal', description: 'Elektrik Faturası', amount: 420.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString() },
-  { id: 'f5', type: 'Deposit', description: 'Kira Geliri', amount: 12000.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString() },
-  { id: 'f6', type: 'Withdrawal', description: 'Starbucks Kahve', amount: 85.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString() },
-  { id: 'f7', type: 'Withdrawal', description: 'Hepsiburada Alışveriş', amount: 2450.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 9).toISOString() },
-  { id: 'f8', type: 'Withdrawal', description: 'Shell Akaryakıt', amount: 1250.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString() },
-  { id: 'f9', type: 'Deposit', description: 'EFT Gelen Para', amount: 3500.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString() }
+  { id: 'f1', type: 'Withdrawal', description: 'Netflix Aboneliği', amount: 149.99, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString() },
+  { id: 'f2', type: 'Deposit', description: 'Maaş Ödemesi', amount: 45000.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 33).toISOString() },
+  { id: 'f3', type: 'Withdrawal', description: 'Market Alışverişi', amount: 845.50, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 34).toISOString() },
+  { id: 'f4', type: 'Withdrawal', description: 'Elektrik Faturası', amount: 420.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 35).toISOString() },
+  { id: 'f5', type: 'Deposit', description: 'Kira Geliri', amount: 12000.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 37).toISOString() },
+  { id: 'f6', type: 'Withdrawal', description: 'Starbucks Kahve', amount: 85.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 38).toISOString() },
+  { id: 'f7', type: 'Withdrawal', description: 'Hepsiburada Alışveriş', amount: 2450.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 39).toISOString() },
+  { id: 'f8', type: 'Withdrawal', description: 'Shell Akaryakıt', amount: 1250.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 40).toISOString() },
+  { id: 'f9', type: 'Deposit', description: 'EFT Gelen Para', amount: 3500.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 42).toISOString() }
 ];
 
 const showAnalysisMenu = ref(false);
@@ -233,8 +233,11 @@ onUnmounted(() => {
                             <strong>{{ tx.description || 'Banka İşlemi' }}</strong>
                             <span class="tx-date">{{ new Date(tx.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' }) }}</span>
                         </div>
-                        <div class="tx-amount" :class="tx.type.toLowerCase()">
-                            {{ tx.type === 'Deposit' ? '+' : '-' }}{{ formatCurrency(tx.amount) }}
+                        <div class="tx-amount" :class="[
+                            tx.status === 'Rejected' ? 'reverted' : tx.type.toLowerCase(), 
+                            { 'deposit': tx.status !== 'Rejected' && (tx.type === 'Deposit' || (tx.toAccountId && (summary?.userAccountIds || []).includes(tx.toAccountId))) }
+                        ]">
+                            {{ tx.status === 'Rejected' ? '↺' : ((tx.type === 'Deposit' || (tx.toAccountId && (summary?.userAccountIds || []).includes(tx.toAccountId))) ? '+' : '-') }}{{ formatCurrency(tx.amount) }}
                         </div>
                     </div>
                 </div>
@@ -491,6 +494,7 @@ onUnmounted(() => {
 .tx-amount { font-weight: 700; font-size: 1.1rem; font-family: 'Outfit'; }
 .tx-amount.deposit { color: var(--success); }
 .tx-amount.withdrawal { color: var(--danger); }
+.tx-amount.reverted { color: #94A3B8; text-decoration: line-through; opacity: 0.7; }
 
 .btn-link {
   display: flex;

@@ -104,7 +104,14 @@ const fallbackCopyTextToClipboard = (text: string) => {
 };
 
 const formatCurrency = (val: number, currency: string = 'TRY') => {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(val);
+  if (currency === 'GOLD') {
+      return val.toLocaleString('tr-TR') + ' gr Altın';
+  }
+  try {
+      return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(val);
+  } catch (e) {
+      return val.toLocaleString('tr-TR') + ' ' + currency;
+  }
 };
 
 const getAccountTypeLabel = (type: string) => {
@@ -148,7 +155,12 @@ onMounted(() => {
                 <h2>{{ formatCurrency(acc.balance, acc.currency) }}</h2>
             </div>
 
-            <div class="ac-iban-section mt-4">
+            <div class="ac-limit-info mt-2">
+                <small>GÜNLÜK İŞLEM LİMİTİ</small>
+                <div class="limit-value">{{ formatCurrency(acc.dailyLimit || 0, acc.currency) }}</div>
+            </div>
+
+            <div class="ac-iban-section mt-3">
                 <div class="iban-label-row">
                     <span>IBAN</span>
                     <button @click="copyIban(acc.iban)" class="copy-link"><Copy :size="12" /> Kopyala</button>
@@ -276,6 +288,9 @@ onMounted(() => {
 .ac-balance-section { margin-top: 24px; }
 .ac-balance-section small { font-size: 0.65rem; font-weight: 800; color: var(--text-muted); letter-spacing: 1px; }
 .ac-balance-section h2 { margin: 4px 0 0 0; font-size: 2rem; font-weight: 900; font-family: 'Outfit'; color: var(--primary-dark); }
+
+.ac-limit-info small { font-size: 0.6rem; font-weight: 800; color: var(--text-muted); }
+.ac-limit-info .limit-value { font-size: 0.9rem; font-weight: 700; color: var(--primary); font-family: 'Outfit'; }
 
 .ac-iban-section .iban-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .ac-iban-section span { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); }

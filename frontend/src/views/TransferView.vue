@@ -141,6 +141,35 @@ onMounted(() => {
     fetchRecipients();
 });
 
+const formatCurrency = (val: number | string, currency: string = 'TRY') => {
+    const num = typeof val === 'string' ? parseFloat(val) : val;
+    if (currency === 'GOLD') {
+        return num.toLocaleString('tr-TR') + ' gr Altın';
+    }
+    try {
+        return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(num || 0);
+    } catch (e) {
+        return num.toLocaleString('tr-TR') + ' ' + currency;
+    }
+};
+
+const calculateTransactionFee = () => {
+    const amt = parseFloat(form.value.amount || '0');
+    if (amt <= 0) return 0;
+
+    switch(form.value.paymentMethod) {
+        case 'Havale': return 0;
+        case 'EFT': {
+            const calculated = (amt * 0.004) - 80;
+            return calculated < 15 ? 15 : calculated;
+        }
+        case 'FAST': return 2.5;
+        case 'SWIFT': return amt * 0.01;
+        case 'QRTransfer': return amt <= 1000 ? 0 : 2;
+        default: return 0;
+    }
+};
+
 const selectedAccount = computed(() => {
     return accounts.value.find(a => a.id.toString() === form.value.fromAccountId);
 });
@@ -176,7 +205,7 @@ const selectedAccount = computed(() => {
                      class="account-opt" :class="{ active: form.fromAccountId === acc.id.toString() }">
                   <div class="acc-top">
                     <span class="acc-type">{{ acc.accountType === 'Individual' ? 'Vadesiz TL' : 'Birikim' }}</span>
-                    <span class="acc-balance">{{ acc.balance.toLocaleString('tr-TR', { style: 'currency', currency: acc.currency }) }}</span>
+                    <span class="acc-balance">{{ formatCurrency(acc.balance, acc.currency) }}</span>
                   </div>
                   <div class="acc-bottom">
                     <small>{{ acc.iban }}</small>
@@ -247,13 +276,19 @@ const selectedAccount = computed(() => {
                     <div class="method-opt" :class="{ active: form.paymentMethod === 'EFT' }" @click="form.paymentMethod = 'EFT'">
                       <History :size="16" /> EFT
                     </div>
+                    <div class="method-opt" :class="{ active: form.paymentMethod === 'SWIFT' }" @click="form.paymentMethod = 'SWIFT'">
+                      <Landmark :size="16" /> SWIFT
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             <button type="submit" class="btn-premium btn-gold btn-block mt-5" :disabled="loading || (selectedAccount && selectedAccount.balance < parseFloat(form.amount || '0'))">
-              <span v-if="!loading">Transferi Güvenle Onayla</span>
+              <span v-if="!loading">
+                Transferi Onayla 
+                {{ calculateTransactionFee() > 0 ? `(İşlem Ücreti: ${formatCurrency(calculateTransactionFee())})` : '' }}
+              </span>
               <span v-else>İşlem Gerçekleştiriliyor...</span>
               <ArrowRight v-if="!loading" :size="20" />
             </button>
@@ -523,6 +558,17 @@ const selectedAccount = computed(() => {
 .info-tip { display: flex; gap: 10px; background: var(--bg-app); padding: 10px; border-radius: 10px; font-size: 0.75rem; color: var(--text-main); margin-top: 1rem; }
 
 .error-text { color: var(--danger); font-size: 0.7rem; font-weight: 700; margin-top: 4px; display: block; }
+
+.fee-preview {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+.fee-preview strong { color: var(--danger); }
+.fee-preview strong.free { color: var(--success); }
 
 .w-100 { width: 100%; }
 </style>

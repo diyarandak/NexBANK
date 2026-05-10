@@ -45,7 +45,8 @@ public class TransferCommand : ITransactionCommand
 
     public async Task<bool> UndoAsync()
     {
-        if (_transaction.Status != TransactionStatus.Approved)
+        // Personelin hem onaylanmış hem de bekleyen (şüpheli) işlemleri reddedebilmesi için:
+        if (_transaction.Status != TransactionStatus.Approved && _transaction.Status != TransactionStatus.Pending)
             return false;
 
         var fromAccount = await _accountRepository.GetByIdAsync(_transaction.FromAccountId!.Value);
@@ -66,4 +67,6 @@ public class TransferCommand : ITransactionCommand
 
         return true;
     }
+
+    public int GetTransactionId() => _transaction.Id;
 }

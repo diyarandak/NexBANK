@@ -8,6 +8,7 @@ public interface ITransactionService
     Task<bool> MakeDepositAsync(int accountId, decimal amount);
     Task<bool> MakeWithdrawAsync(int accountId, decimal amount);
     Task<bool> UndoLastTransferAsync(int transactionId);
+    Task<bool> ApproveTransactionAsync(int transactionId);
     Task<IEnumerable<TransactionDto>> GetAllTransactionsAsync();
     Task<IEnumerable<TransactionDto>> GetUserTransactionsAsync(int userId);
 }

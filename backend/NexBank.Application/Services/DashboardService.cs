@@ -61,6 +61,7 @@ public class DashboardService : IDashboardService
                 PendingTransactions = pendingCount,
                 CreditCardDebt = creditCardDebt,
                 ActiveLoansTotal = activeLoansTotal,
+                UserAccountIds = new List<int>(),
                 RecentTransactions = recentTransactions
             };
         }
@@ -105,6 +106,7 @@ public class DashboardService : IDashboardService
                 PendingTransactions = pendingCount,
                 CreditCardDebt = creditCardDebt,
                 ActiveLoansTotal = activeLoansTotal,
+                UserAccountIds = accountIds.ToList(),
                 RecentTransactions = recentTransactions
             };
         }

@@ -43,4 +43,6 @@ public class DepositCommand : ITransactionCommand
         _transaction.Description += " [Geri Alındı]";
         return true;
     }
+
+    public int GetTransactionId() => _transaction.Id;
 }

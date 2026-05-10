@@ -8,8 +8,8 @@ public class EftStrategy : IPaymentStrategy
 
     public decimal CalculateFee(decimal amount)
     {
-        // EFT için sabit binde 2 masraf (min 3₺)
-        decimal fee = amount * 0.002m;
-        return fee < 3m ? 3m : fee;
+        // Hassas EFT Hesabı: (Tutar * 0.004) - 80. Minimum 15 TL.
+        decimal calculated = (amount * 0.004m) - 80m;
+        return calculated < 15m ? 15m : calculated;
     }
 }

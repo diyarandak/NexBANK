@@ -8,4 +8,5 @@ public interface ITransactionCommand
 {
     Task<bool> ExecuteAsync();
     Task<bool> UndoAsync();
+    int GetTransactionId();
 }

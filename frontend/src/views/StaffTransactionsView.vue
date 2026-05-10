@@ -20,6 +20,28 @@ const fetchTransactions = async () => {
     }
 };
 
+const handleApprove = async (id: number) => {
+    if (!confirm('Bu işlemi onaylıyor musunuz?')) return;
+    try {
+        await apiClient.post(`/transactions/approve/${id}`);
+        await fetchTransactions();
+        alert('İşlem onaylandı.');
+    } catch (err) {
+        alert('İşlem onaylanamadı.');
+    }
+};
+
+const handleReject = async (id: number) => {
+    if (!confirm('Bu işlemi REDDEDİP parayı iade etmek istiyor musunuz? (Undo Command tetiklenecek)')) return;
+    try {
+        await apiClient.post(`/transactions/undo/${id}`);
+        await fetchTransactions();
+        alert('İşlem reddedildi ve tutar iade edildi (Undo başarılı).');
+    } catch (err) {
+        alert('İşlem geri alınamadı.');
+    }
+};
+
 const filteredTransactions = computed(() => {
     let list = transactions.value;
     if (filterType.value !== 'All') {
@@ -76,10 +98,11 @@ onMounted(fetchTransactions);
                     <th>Alıcı ID</th>
                     <th>Miktar</th>
                     <th>Durum</th>
+                    <th>İşlemler</th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="t in filteredTransactions" :key="t.id" :class="{ 'suspicious-row': t.description?.includes('ŞÜPHELİ') }">
+                <tr v-for="t in filteredTransactions" :key="t.id" :class="{ 'suspicious-row': t.status === 'Pending' }">
                     <td><span class="id-tag">#{{ t.id }}</span></td>
                     <td>
                         <div class="t-type-cell">
@@ -95,11 +118,20 @@ onMounted(fetchTransactions);
                     <td>{{ new Date(t.createdAt).toLocaleString() }}</td>
                     <td><code>{{ t.fromAccountId || '---' }}</code></td>
                     <td><code>{{ t.toAccountId || '---' }}</code></td>
-                    <td><strong :class="t.type === 'Withdrawal' ? 'text-danger' : 'text-success'">{{ formatCurrency(t.amount) }}</strong></td>
+                    <td><strong :class="[t.status === 'Rejected' ? 'reverted' : (t.type === 'Withdrawal' ? 'text-danger' : 'text-success')]">{{ formatCurrency(t.amount) }}</strong></td>
                     <td>
                         <span class="t-status-pill" :class="t.status.toLowerCase()">
                             {{ t.status === 'Pending' ? 'İncelemede' : (t.status === 'Approved' ? 'Başarılı' : (t.status === 'Rejected' ? 'Reddedildi' : t.status)) }}
                         </span>
+                    </td>
+                    <td>
+                        <div v-if="t.status === 'Pending'" class="d-flex gap-2">
+                            <button @click="handleApprove(t.id)" class="btn-action approve">Onayla</button>
+                            <button @click="handleReject(t.id)" class="btn-action reject">Reddet / Geri Al</button>
+                        </div>
+                        <div v-else>
+                           <small class="text-muted">İşlem Tamamlandı</small>
+                        </div>
                     </td>
                 </tr>
             </tbody>
@@ -139,4 +171,33 @@ onMounted(fetchTransactions);
 .premium-table { width: 100%; border-collapse: collapse; }
 .premium-table th { text-align: left; padding: 20px; background: #F8FAFC; color: #64748B; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
 .premium-table td { padding: 20px; border-bottom: 1px solid #F1F5F9; font-size: 0.85rem; }
+
+.btn-action {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: 0.2s;
+}
+.btn-action.approve {
+    background: #16A34A;
+    color: white;
+}
+.btn-action.approve:hover {
+    background: #15803D;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+}
+.btn-action.reject {
+    background: #DC2626;
+    color: white;
+}
+.btn-action.reject:hover {
+    background: #B91C1C;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+.reverted { color: #94A3B8; text-decoration: line-through; opacity: 0.7; }
+.text-success { color: #16A34A; }
+.text-danger { color: #DC2626; }
 </style>

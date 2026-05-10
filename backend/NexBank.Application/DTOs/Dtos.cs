@@ -100,6 +100,7 @@ public class DashboardDto
     public int PendingTransactions { get; set; }
     public decimal CreditCardDebt { get; set; }
     public decimal ActiveLoansTotal { get; set; }
+    public List<int> UserAccountIds { get; set; } = new();
     public List<TransactionDto> RecentTransactions { get; set; } = new();
 }
 

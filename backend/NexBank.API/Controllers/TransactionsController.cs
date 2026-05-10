@@ -78,12 +78,30 @@ public class TransactionsController : ControllerBase
     [HttpPost("undo/{transactionId}")]
     public async Task<IActionResult> UndoTransfer(int transactionId)
     {
-        var success = await _transactionService.UndoLastTransferAsync(transactionId);
+        try 
+        {
+            var success = await _transactionService.UndoLastTransferAsync(transactionId);
+            if (success)
+            {
+                return Ok(new { Message = "İşlem başarıyla geri alındı." });
+            }
+            return BadRequest(new { Message = "Bu işlem geri alınamaz veya zaten geri alınmış." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Message = $"Hata: {ex.Message}" });
+        }
+    }
+
+    [HttpPost("approve/{transactionId}")]
+    public async Task<IActionResult> ApproveTransaction(int transactionId)
+    {
+        var success = await _transactionService.ApproveTransactionAsync(transactionId);
         if (success)
         {
-            return Ok(new { Message = "İşlem başarıyla geri alındı." });
+            return Ok(new { Message = "İşlem başarıyla onaylandı." });
         }
-        return BadRequest(new { Message = "İşlem geri alınamadı veya bulunamadı." });
+        return BadRequest(new { Message = "İşlem onaylanamadı." });
     }
 
     [HttpGet("user/my")]

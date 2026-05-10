@@ -15,9 +15,7 @@ public class FraudDetectionObserver : ITransactionObserver
             Console.WriteLine($"[FRAUD ALERT] 🚨 Şüpheli İşlem Yakalandı! İşlem ID: {transaction.Id}, Tutar: {transaction.Amount} ₺");
             
             // Burada normalde Fraud Alert tablosuna kayıt atılır veya SignalR ile Personele canlı bildirim gider.
-            // Şimdilik işlemi durdurmuyoruz ama "İncelenmesi Gerekenler" havuzuna düştüğünü varsayıyoruz.
-            transaction.Status = TransactionStatus.Pending; // İşlemi beklemeye al (Opsiyonel)
-            transaction.Description += " [🚨 ŞÜPHELİ İŞLEM - İNCELEMEDE]";
+            // İşlemi durdurma yetkisi artık TransactionService'e (ön kontrole) taşındı.
         }
 
         return Task.CompletedTask;

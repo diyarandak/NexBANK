@@ -68,15 +68,39 @@ public class TransactionService : ITransactionService
                 Amount = amount,
                 Type = TransactionType.Transfer,
                 Status = TransactionStatus.Pending,
-                Description = $"{method} ile Transfer. Kesinti: {fee} ₺",
+                Description = $"{method} Transferi",
                 CreatedAt = DateTime.UtcNow
             };
             await _transactionRepository.AddAsync(transaction);
 
-            // 2. COMMAND PATTERN: Komutu hazırla
-            var transferCommand = new TransferCommand(_accountRepository, transaction, fee);
+            // Masraf kaydı (Gönderen için ayrı satır)
+            if (fee > 0)
+            {
+                var feeTx = new Transaction
+                {
+                    FromAccountId = fromAccountId,
+                    Amount = fee,
+                    Type = TransactionType.Withdrawal,
+                    Status = amount >= 50000 ? TransactionStatus.Pending : TransactionStatus.Approved,
+                    Description = $"{method} İşlem Ücreti",
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _transactionRepository.AddAsync(feeTx);
+            }
 
-            // 3. EXECUTE & OBSERVE: Invoker çalıştıracak ve OBSERVER desenini tetikleyecek
+            // 50.000 TL ve üstü ise PARAYI DÜŞME, sadece kaydet ve bekle
+            if (amount >= 50000)
+            {
+                transaction.Status = TransactionStatus.Pending;
+                transaction.Description += " [🚨 ŞÜPHELİ İŞLEM - PERSONEL ONAYI BEKLENİYOR]";
+                await _transactionRepository.UpdateAsync(transaction); // Zaten AddAsync yapılmıştı, güncelle
+                
+                await _unitOfWork.CommitTransactionAsync();
+                return true; // İşlem kaydedildi ama para transferi bekliyor
+            }
+
+            // 50.000 TL altı ise HEMEN gerçekleştir
+            var transferCommand = new TransferCommand(_accountRepository, transaction, fee);
             var result = await _invoker.ExecuteCommandAsync(transferCommand, transaction);
 
             if (result)
@@ -143,10 +167,127 @@ public class TransactionService : ITransactionService
 
     public async Task<bool> UndoLastTransferAsync(int transactionId)
     {
+        // 1. İşlemi bul
         var transaction = await _transactionRepository.GetByIdAsync(transactionId);
-        if (transaction == null) return false;
+        if (transaction == null || transaction.Status == TransactionStatus.Rejected) return false;
 
-        return await _invoker.UndoLastCommandAsync(transaction);
+        // 2. EĞER İŞLEM HİÇ ONAYLANMAMIŞ VE 50K ÜSTÜYSE (PARA HİÇ ÇIKMADI)
+        if (transaction.Status == TransactionStatus.Pending && transaction.Amount >= 50000)
+        {
+            transaction.Status = TransactionStatus.Rejected;
+            transaction.Description += " [PERSONEL TARAFINDAN REDDEDİLDİ]";
+            await _transactionRepository.UpdateAsync(transaction);
+
+            // Masrafı da (Pending olan) iptal et
+            var allTx = await _transactionRepository.GetAllAsync();
+            var feeTx = allTx.FirstOrDefault(t => t.FromAccountId == transaction.FromAccountId && t.Type == TransactionType.Withdrawal && t.CreatedAt >= transaction.CreatedAt.AddSeconds(-5) && t.CreatedAt <= transaction.CreatedAt.AddSeconds(5));
+            if (feeTx != null)
+            {
+                feeTx.Status = TransactionStatus.Rejected;
+                await _transactionRepository.UpdateAsync(feeTx);
+            }
+            return true;
+        }
+
+        // 3. Önce Invoker/Command hafızasından dene (Hızlı iade)
+        var success = await _invoker.UndoLastCommandAsync(transaction);
+        
+        // 3. Hafıza boşsa veya Command başarısızsa -> MANUEL KESİN İADE
+        if (!success)
+        {
+            try 
+            {
+                var fromAcc = await _accountRepository.GetByIdAsync(transaction.FromAccountId ?? 0);
+                var toAcc = await _accountRepository.GetByIdAsync(transaction.ToAccountId ?? 0);
+                
+                if (fromAcc != null && toAcc != null)
+                {
+                    // BAKİYE TAKASI (X'e iade, Y'den geri alış)
+                    fromAcc.Balance += transaction.Amount; 
+                    toAcc.Balance -= transaction.Amount;   
+                    
+                    transaction.Status = TransactionStatus.Rejected;
+                    transaction.Description += " [İADE EDİLDİ]";
+                    transaction.ProcessedAt = DateTime.UtcNow;
+                    
+                    // Veritabanını güncelle
+                    await _accountRepository.UpdateAsync(fromAcc);
+                    await _accountRepository.UpdateAsync(toAcc);
+                    await _transactionRepository.UpdateAsync(transaction);
+
+                    // Eğer bu transferin bir masrafı (EFT ücreti vb.) varsa onu da bul ve iptal et (İsteğe bağlı ama tutarlılık için iyi olur)
+                    var allTransactions = await _transactionRepository.GetAllAsync();
+                    var feeTx = allTransactions.FirstOrDefault(t => 
+                        t.FromAccountId == fromAcc.Id && 
+                        t.Type == TransactionType.Withdrawal && 
+                        t.CreatedAt >= transaction.CreatedAt.AddSeconds(-5) && 
+                        t.CreatedAt <= transaction.CreatedAt.AddSeconds(5) &&
+                        (t.Description != null && t.Description.Contains("Ücreti")));
+                    
+                    if (feeTx != null && feeTx.Status != TransactionStatus.Rejected)
+                    {
+                        fromAcc.Balance += feeTx.Amount; // Masrafı da iade et
+                        feeTx.Status = TransactionStatus.Rejected;
+                        feeTx.Description += " [İADE]";
+                        await _accountRepository.UpdateAsync(fromAcc);
+                        await _transactionRepository.UpdateAsync(feeTx);
+                    }
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[FATAL UNDO ERROR] {ex.Message}");
+                return false;
+            }
+        }
+
+        return success;
+    }
+
+    public async Task<bool> ApproveTransactionAsync(int transactionId)
+    {
+        var transaction = await _transactionRepository.GetByIdAsync(transactionId);
+        if (transaction == null || transaction.Status != TransactionStatus.Pending) return false;
+
+        var fromAccount = await _accountRepository.GetByIdAsync(transaction.FromAccountId ?? 0);
+        var toAccount = await _accountRepository.GetByIdAsync(transaction.ToAccountId ?? 0);
+
+        if (fromAccount == null || toAccount == null) return false;
+
+        // Ücreti tekrar hesapla veya sistemden bul (EFT/Havale türüne göre)
+        // Burada basitleştirmek için %0.4 - 80 formülünü EFT kabul ederek uyguluyoruz (veya genel CalculateFee)
+        // Eğer transfer sırasında feeTx kaydedildiyse onu bulabiliriz.
+        decimal fee = 0;
+        var allTx = await _transactionRepository.GetAllAsync();
+        var feeTx = allTx.FirstOrDefault(t => t.FromAccountId == fromAccount.Id && t.Type == TransactionType.Withdrawal && t.CreatedAt >= transaction.CreatedAt.AddSeconds(-5) && t.CreatedAt <= transaction.CreatedAt.AddSeconds(5));
+        if (feeTx != null) fee = feeTx.Amount;
+
+        // Bakiyeyi ŞİMDİ düşüyoruz
+        if (fromAccount.Balance < (transaction.Amount + fee))
+            throw new Exception("Hesap bakiyesi bu onay için artık yetersiz.");
+
+        fromAccount.Balance -= (transaction.Amount + fee);
+        toAccount.Balance += transaction.Amount;
+
+        await _accountRepository.UpdateAsync(fromAccount);
+        await _accountRepository.UpdateAsync(toAccount);
+
+        transaction.Status = TransactionStatus.Approved;
+        transaction.Description = transaction.Description?.Replace(" [🚨 ŞÜPHELİ İŞLEM - PERSONEL ONAYI BEKLENİYOR]", " [PERSONEL ONAYLI]");
+        transaction.ProcessedAt = DateTime.UtcNow;
+        
+        await _transactionRepository.UpdateAsync(transaction);
+
+        // Masraf işlemini de (eğer varsa) onaylı yapalım
+        if (feeTx != null)
+        {
+            feeTx.Status = TransactionStatus.Approved;
+            await _transactionRepository.UpdateAsync(feeTx);
+        }
+
+        return true;
     }
 
     public async Task<IEnumerable<NexBank.Application.DTOs.TransactionDto>> GetAllTransactionsAsync()

@@ -11,7 +11,7 @@ namespace NexBank.Application.Patterns.Command;
 /// </summary>
 public class TransactionInvoker
 {
-    private readonly Stack<ITransactionCommand> _history = new();
+    private static readonly List<ITransactionCommand> _commandHistory = new();
     private readonly ITransactionRepository _transactionRepository;
     private readonly TransactionSubject _subject;
 
@@ -27,11 +27,10 @@ public class TransactionInvoker
 
         if (result)
         {
-            _history.Push(command);
-            await _transactionRepository.UpdateAsync(transactionToSave);
+            _commandHistory.Add(command);
             
-            // Observer ile abonelere (SMS, Email, Log) bildir!
             await _subject.NotifyAsync(transactionToSave);
+            await _transactionRepository.UpdateAsync(transactionToSave);
         }
         else
         {
@@ -44,12 +43,16 @@ public class TransactionInvoker
 
     public async Task<bool> UndoLastCommandAsync(Transaction transactionToUpdate)
     {
-        if (_history.Any())
+        // İlgili işleme ait komutu geçmişten bul (TransferCommand içindeki _transaction.Id ile eşleşmeli)
+        var command = _commandHistory.FirstOrDefault(c => 
+            c is TransferCommand tc && tc.GetTransactionId() == transactionToUpdate.Id);
+
+        if (command != null)
         {
-            var command = _history.Pop();
             var success = await command.UndoAsync();
             if (success)
             {
+                _commandHistory.Remove(command);
                 await _transactionRepository.UpdateAsync(transactionToUpdate);
             }
             return success;

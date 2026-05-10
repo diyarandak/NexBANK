@@ -43,4 +43,6 @@ public class WithdrawCommand : ITransactionCommand
         _transaction.Description += " [Geri Alındı]";
         return true;
     }
+
+    public int GetTransactionId() => _transaction.Id;
 }

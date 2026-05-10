@@ -13,22 +13,27 @@ const loading = ref(true);
 const filterType = ref('All');
 const timeRange = ref('30');
 const searchQuery = ref('');
+const userAccountIds = ref<number[]>([]);
 
 const fakeTransactions = [
-  { id: 'f1', type: 'Withdrawal', description: 'Netflix Aboneliği', amount: 149.99, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
-  { id: 'f2', type: 'Deposit', description: 'Maaş Ödemesi', amount: 45000.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString() },
-  { id: 'f3', type: 'Withdrawal', description: 'Market Alışverişi', amount: 845.50, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString() },
-  { id: 'f4', type: 'Withdrawal', description: 'Elektrik Faturası', amount: 420.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString() },
-  { id: 'f5', type: 'Deposit', description: 'Kira Geliri', amount: 12000.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString() },
-  { id: 'f6', type: 'Withdrawal', description: 'Starbucks Kahve', amount: 85.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString() },
-  { id: 'f7', type: 'Withdrawal', description: 'Hepsiburada Alışveriş', amount: 2450.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 9).toISOString() },
-  { id: 'f8', type: 'Withdrawal', description: 'Shell Akaryakıt', amount: 1250.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString() },
-  { id: 'f9', type: 'Deposit', description: 'EFT Gelen Para', amount: 3500.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString() }
+  { id: 'f1', type: 'Withdrawal', description: 'Netflix Aboneliği', amount: 149.99, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString() },
+  { id: 'f2', type: 'Deposit', description: 'Maaş Ödemesi', amount: 45000.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 33).toISOString() },
+  { id: 'f3', type: 'Withdrawal', description: 'Market Alışverişi', amount: 845.50, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 34).toISOString() },
+  { id: 'f4', type: 'Withdrawal', description: 'Elektrik Faturası', amount: 420.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 35).toISOString() },
+  { id: 'f5', type: 'Deposit', description: 'Kira Geliri', amount: 12000.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 37).toISOString() },
+  { id: 'f6', type: 'Withdrawal', description: 'Starbucks Kahve', amount: 85.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 38).toISOString() },
+  { id: 'f7', type: 'Withdrawal', description: 'Hepsiburada Alışveriş', amount: 2450.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 39).toISOString() },
+  { id: 'f8', type: 'Withdrawal', description: 'Shell Akaryakıt', amount: 1250.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 40).toISOString() },
+  { id: 'f9', type: 'Deposit', description: 'EFT Gelen Para', amount: 3500.00, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 42).toISOString() }
 ];
 
 const fetchTransactions = async () => {
     loading.value = true;
     try {
+        // Kullanıcı hesaplarını çek (Yeşil/Kırmızı renk mantığı için)
+        const accRes = await apiClient.get('/Accounts/user/my');
+        userAccountIds.value = accRes.data.map((a: any) => a.id);
+
         const res = await apiClient.get('/Transactions/user/my');
         let real = Array.isArray(res.data) ? res.data : [];
         
@@ -149,8 +154,11 @@ onMounted(fetchTransactions);
                                 {{ t.type === 'Deposit' ? 'Para Girişi' : (t.type === 'Withdrawal' ? 'Para Çıkışı' : 'Transfer') }}
                             </span>
                         </td>
-                        <td class="amount-cell text-right" :class="t.type.toLowerCase()">
-                            {{ t.type === 'Deposit' ? '+' : '-' }}{{ formatCurrency(t.amount) }}
+                        <td class="amount-cell text-right" :class="[
+                            t.status === 'Rejected' ? 'reverted' : t.type.toLowerCase(), 
+                            { 'deposit': t.status !== 'Rejected' && (t.type === 'Deposit' || (t.toAccountId && userAccountIds.includes(t.toAccountId))) }
+                        ]">
+                            {{ t.status === 'Rejected' ? '↺' : ((t.type === 'Deposit' || (t.toAccountId && userAccountIds.includes(t.toAccountId))) ? '+' : '-') }}{{ formatCurrency(t.amount) }}
                         </td>
                         <td class="text-right">
                             <span class="status-pill-p active">Başarılı</span>
@@ -264,6 +272,7 @@ onMounted(fetchTransactions);
 .amount-cell.deposit { color: var(--success); }
 .amount-cell.withdrawal { color: var(--danger); }
 .amount-cell.transfer { color: var(--primary-dark); }
+.amount-cell.reverted { color: #94A3B8; text-decoration: line-through; opacity: 0.7; }
 
 .status-pill-p { font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 100px; }
 .status-pill-p.active { background: #E0F2FE; color: #0369A1; }
