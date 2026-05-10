@@ -104,6 +104,7 @@ builder.Services.AddSingleton<IAccountFactory, AccountFactory>();
 builder.Services.AddScoped<IPaymentStrategy, HavaleStrategy>();
 builder.Services.AddScoped<IPaymentStrategy, EftStrategy>();
 builder.Services.AddScoped<IPaymentStrategy, SwiftStrategy>();
+builder.Services.AddScoped<IPaymentStrategy, FastStrategy>();
 builder.Services.AddScoped<IPaymentStrategy, QrTransferStrategy>();
 builder.Services.AddScoped<PaymentStrategyContext>();
 

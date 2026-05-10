@@ -27,6 +27,7 @@ public enum PaymentMethod
     Havale,
     EFT,
     SWIFT,
+    FAST,
     QRTransfer
 }
 

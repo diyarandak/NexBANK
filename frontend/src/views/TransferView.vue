@@ -163,8 +163,14 @@ const calculateTransactionFee = () => {
             const calculated = (amt * 0.004) - 80;
             return calculated < 15 ? 15 : calculated;
         }
-        case 'FAST': return 2.5;
-        case 'SWIFT': return amt * 0.01;
+        case 'FAST': {
+            const calculated = (amt * 0.001) + 2;
+            return calculated < 5 ? 5 : (calculated > 100 ? 100 : calculated);
+        }
+        case 'SWIFT': {
+            const calculated = (amt * 0.015) + 250;
+            return calculated < 500 ? 500 : calculated;
+        }
         case 'QRTransfer': return amt <= 1000 ? 0 : 2;
         default: return 0;
     }

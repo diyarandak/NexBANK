@@ -118,7 +118,7 @@ onMounted(fetchTransactions);
                     <td>{{ new Date(t.createdAt).toLocaleString() }}</td>
                     <td><code>{{ t.fromAccountId || '---' }}</code></td>
                     <td><code>{{ t.toAccountId || '---' }}</code></td>
-                    <td><strong :class="[t.status === 'Rejected' ? 'reverted' : (t.type === 'Withdrawal' ? 'text-danger' : 'text-success')]">{{ formatCurrency(t.amount) }}</strong></td>
+                    <td><strong :class="[t.status === 'Pending' ? 'pending' : (t.status === 'Rejected' ? 'reverted' : (t.type === 'Withdrawal' ? 'text-danger' : 'text-success'))]">{{ formatCurrency(t.amount) }}</strong></td>
                     <td>
                         <span class="t-status-pill" :class="t.status.toLowerCase()">
                             {{ t.status === 'Pending' ? 'İncelemede' : (t.status === 'Approved' ? 'Başarılı' : (t.status === 'Rejected' ? 'Reddedildi' : t.status)) }}
@@ -198,6 +198,7 @@ onMounted(fetchTransactions);
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
 }
 .reverted { color: #94A3B8; text-decoration: line-through; opacity: 0.7; }
+.pending { color: #EAB308; }
 .text-success { color: #16A34A; }
 .text-danger { color: #DC2626; }
 </style>

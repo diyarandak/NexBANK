@@ -8,7 +8,8 @@ public class SwiftStrategy : IPaymentStrategy
 
     public decimal CalculateFee(decimal amount)
     {
-        // SWIFT (Yurtdışı) için sabit %1 komisyon
-        return amount * 0.01m;
+        // Dinamik SWIFT: %1.5 + 250 TL Sabit. Min 500 TL.
+        decimal fee = (amount * 0.015m) + 250m;
+        return fee < 500m ? 500m : fee;
     }
 }

@@ -44,7 +44,7 @@ const combinedTransactions = computed(() => {
     }
     
     combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return combined.slice(0, 10);
+    return combined.filter(t => t.status !== 'Rejected').slice(0, 10);
 });
 
 const formatCurrency = (val: number) => {
@@ -234,10 +234,10 @@ onUnmounted(() => {
                             <span class="tx-date">{{ new Date(tx.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' }) }}</span>
                         </div>
                         <div class="tx-amount" :class="[
-                            tx.status === 'Rejected' ? 'reverted' : tx.type.toLowerCase(), 
-                            { 'deposit': tx.status !== 'Rejected' && (tx.type === 'Deposit' || (tx.toAccountId && (summary?.userAccountIds || []).includes(tx.toAccountId))) }
+                            tx.status === 'Pending' ? 'pending' : (tx.status === 'Rejected' ? 'reverted' : tx.type.toLowerCase()), 
+                            { 'deposit': tx.status === 'Approved' && (tx.type === 'Deposit' || (tx.toAccountId && (summary?.userAccountIds || []).includes(tx.toAccountId))) }
                         ]">
-                            {{ tx.status === 'Rejected' ? '↺' : ((tx.type === 'Deposit' || (tx.toAccountId && (summary?.userAccountIds || []).includes(tx.toAccountId))) ? '+' : '-') }}{{ formatCurrency(tx.amount) }}
+                            {{ tx.status === 'Pending' ? '' : (tx.status === 'Rejected' ? '↺' : ((tx.type === 'Deposit' || (tx.toAccountId && (summary?.userAccountIds || []).includes(tx.toAccountId))) ? '+' : '-')) }}{{ formatCurrency(tx.amount) }}
                         </div>
                     </div>
                 </div>
@@ -495,6 +495,7 @@ onUnmounted(() => {
 .tx-amount.deposit { color: var(--success); }
 .tx-amount.withdrawal { color: var(--danger); }
 .tx-amount.reverted { color: #94A3B8; text-decoration: line-through; opacity: 0.7; }
+.tx-amount.pending { color: #EAB308; } /* Sarı Renk */
 
 .btn-link {
   display: flex;

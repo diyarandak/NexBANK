@@ -38,9 +38,9 @@ const fetchTransactions = async () => {
         let real = Array.isArray(res.data) ? res.data : [];
         
         if (authStore.user?.email === 'nexbank@gmail.com') {
-            transactions.value = [...real, ...fakeTransactions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            transactions.value = [...real, ...fakeTransactions].filter(t => t.status !== 'Rejected').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         } else {
-            transactions.value = real.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            transactions.value = real.filter(t => t.status !== 'Rejected').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         }
     } catch (err) {
         console.error('İşlemler yüklenemedi', err);
@@ -155,10 +155,10 @@ onMounted(fetchTransactions);
                             </span>
                         </td>
                         <td class="amount-cell text-right" :class="[
-                            t.status === 'Rejected' ? 'reverted' : t.type.toLowerCase(), 
-                            { 'deposit': t.status !== 'Rejected' && (t.type === 'Deposit' || (t.toAccountId && userAccountIds.includes(t.toAccountId))) }
+                            t.status === 'Pending' ? 'pending' : (t.status === 'Rejected' ? 'reverted' : t.type.toLowerCase()), 
+                            { 'deposit': t.status === 'Approved' && (t.type === 'Deposit' || (t.toAccountId && userAccountIds.includes(t.toAccountId))) }
                         ]">
-                            {{ t.status === 'Rejected' ? '↺' : ((t.type === 'Deposit' || (t.toAccountId && userAccountIds.includes(t.toAccountId))) ? '+' : '-') }}{{ formatCurrency(t.amount) }}
+                            {{ t.status === 'Pending' ? '' : (t.status === 'Rejected' ? '↺' : ((t.type === 'Deposit' || (t.toAccountId && userAccountIds.includes(t.toAccountId))) ? '+' : '-')) }}{{ formatCurrency(t.amount) }}
                         </td>
                         <td class="text-right">
                             <span class="status-pill-p active">Başarılı</span>
@@ -273,6 +273,7 @@ onMounted(fetchTransactions);
 .amount-cell.withdrawal { color: var(--danger); }
 .amount-cell.transfer { color: var(--primary-dark); }
 .amount-cell.reverted { color: #94A3B8; text-decoration: line-through; opacity: 0.7; }
+.amount-cell.pending { color: #EAB308; } /* Sarı */
 
 .status-pill-p { font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 100px; }
 .status-pill-p.active { background: #E0F2FE; color: #0369A1; }
